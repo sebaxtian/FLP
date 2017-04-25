@@ -1,0 +1,21 @@
+;; The first three lines of this file were inserted by DrRacket. They record metadata
+;; about the language level of this file in a form that our tools can easily process.
+#reader(lib "htdp-advanced-reader.ss" "lang")((modname alcance-ligadura) (read-case-sensitive #t) (teachpacks ()) (htdp-settings #(#t constructor repeating-decimal #t #t none #f () #f)))
+;;
+;; EJEMPLOS - Alcance y Ligadura de una Variable
+;;
+;; Conceptos de Alcance y Ligadura
+;;
+;; Autor: Sebastian Rios Sabogal
+;;
+
+
+(define x          ; Variable x1
+  (lambda (x)      ; Variable x2
+    (map
+     (lambda (x)   ; Variable x3
+       (+ x 1))    ; Ref x3
+     x)))          ; Ref x2
+(x '(123))         ; Ref x1
+
+
