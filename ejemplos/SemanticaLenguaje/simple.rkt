@@ -255,11 +255,10 @@ scan&parse
 (just-scan "add1(   x   )%cccc")
 (just-scan "add1(  +(5, x)   )%cccc")
 (just-scan "add1(  +(5, %ccccc x) ")
-(scan&parse "add1(x)")
-(scan&parse "add1(   x   )%cccc")
-(scan&parse "add1(  +(5, x)   )%cccc")
-(scan&parse "add1(  +(5, %cccc
-x)) ")
+;(scan&parse "add1(x)")
+;(scan&parse "add1(   x   )%cccc")
+;(scan&parse "add1(  +(5, x)   )%cccc")
+;(scan&parse "add1(  +(5, %cccc x)) ")
 
 ;(define caso1 (primapp-exp (incr-prim) (list (lit-exp 5))))
 ;(define exp-numero (lit-exp 8))
