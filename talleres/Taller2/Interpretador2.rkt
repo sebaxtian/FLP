@@ -23,35 +23,35 @@
 ;;                  ::= < flotante >
 ;;                      < flotante-exp ( datum ) >
 ;;                  ::= < "true" >
-;;                      < true-exp ( datum ) >
+;;                      < true-exp >
 ;;                  ::= < "false" >
-;;                      < false-exp ( datum ) >
+;;                      < false-exp >
 ;;                  ::= < texto >
 ;;                      < texto-exp ( datum ) >
 ;;                  ::= < variable >
-;;                      < variable-exp ( datum ) >
+;;                      < variable-exp ( id ) >
 ;;                  ::= var < variable > = < expresion >
-;;                      < variableCreacion-exp ( ?? ) >
+;;                      < variableCreacion-exp ( id expresion ) >
 ;;                  ::= set < variable > = < expresion >
 ;;                      < variableAsignacion-exp ( id rhsexp ) >
 ;;                  ::= { { < expresion > }+ }
-;;                      < lista-exp ( datum ) >
+;;                      < lista-exp ( expresion body ) >
 ;;                  ::= # { { < expresion > }+ }
-;;                      < vector-exp ( ?? )>
+;;                      < vector-exp ( expresion body )>
 ;;                  ::= fun ( { variable }+ ) { < expresion > }+ end
-;;                      < fun-exp ( ids? body? )>
+;;                      < fun-exp ( id body expresion body )>
 ;;                  ::= proc ( { variable }* ) { < expresion > }+ end
-;;                      < proc-exp ( ids body )>
+;;                      < proc-exp ( ids expresion body )>
 ;;                  ::= ( variable { < expresion > }* )
-;;                      < app-exp ( ?? )>
+;;                      < app-exp ( id body )>
 ;;                  ::= local ( ( { variable = < expresion > }* ) ( { < expresion > }+ ) )
-;;                      < local-exp ( ?? )>
+;;                      < local-exp ( ids body expresion )>
 ;;                  ::= if < expresion > ? < expresion > : < expresion >
 ;;                      < if-exp (exp1 exp2 exp3)>
 ;;                  ::= cond {[ < expresion expresion > ]}* else < expresion >
-;;                      < cond-exp ( ?? )>
+;;                      < cond-exp ( cond1 cond2 expresion )>
 ;;                  ::= < primitive > ( { < expression > }* (,) )
-;;                      < primitiva-exp ( ?? ) >
+;;                      < primitiva-exp ( prim expresion body ) >
 ;;
 ;;  <primitive>     ::= + | - | * | / | < | =< | > | >= | == | size | nth | agregar | delete
 ;;
@@ -76,8 +76,6 @@
   )
 ;;
 ;******************************************************************************************
-
-
 
 ;******************************************************************************************
 ;;
@@ -146,8 +144,6 @@
 ;;
 ;******************************************************************************************
 
-
-
 ;******************************************************************************************
 ;;
 ;; Definir datatypes (Construidos automáticamente)
@@ -164,8 +160,6 @@
 ;;
 ;******************************************************************************************
 
-
-
 ;******************************************************************************************
 ;;
 ;; Escaner El Analizador Léxico (Scanner)
@@ -174,8 +168,6 @@
 ;;
 ;******************************************************************************************
 
-
-
 ;******************************************************************************************
 ;;
 ;; Parse El FrontEnd (Análisis léxico (scanner) y sintáctico (parser) integrados)
@@ -183,10 +175,6 @@
 (define scan&parse (sllgen:make-string-parser especificacion-lexica especificacion-gramatical))
 ;;
 ;******************************************************************************************
-
-
-
-
 
 
 ;******************************************************************************************
@@ -207,7 +195,6 @@
 ;******************************************************************************************
 
 
-
 ;******************************************************************************************
 ;;
 ;; El Interprete
@@ -224,7 +211,6 @@
 ;******************************************************************************************
 
 
-
 ;******************************************************************************************
 ;;
 ;; Ambiente inicial (es vacio)
@@ -233,14 +219,25 @@
   (lambda ()
     (ambiente-extendido
      '(x)
-     '(2)
+     (list (direct-target 2))
      (ambiente-vacio))
     )
   )
 ;;
 ;******************************************************************************************
 
-
+;**************************************************************************************
+;;
+;;Definición tipos de datos referencia y blanco
+;;
+(define-datatype target target?
+  (direct-target (expval expval?))
+  (indirect-target (ref ref-to-direct-target?)))
+;;
+(define-datatype reference reference?
+  (a-ref (position integer?)
+         (vec vector?)))
+;**************************************************************************************
 
 ;******************************************************************************************
 ;;
@@ -270,45 +267,53 @@
                                 )
                               )
       ;; Listas
-      (lista-exp (rator rands) (primt-list (append (list (evaluar-expresion rator ambiente)) (evaluar-rands rands ambiente)) "{"))
+      (lista-exp (rator rands) (primt-list (append (list (evaluar-expresion rator ambiente)) (struct-lista rands ambiente)) "{"))
       ;;Vectores
-      (vector-exp (rator rands) (primt-vect (append (list (evaluar-expresion rator ambiente)) (evaluar-rands rands ambiente)) "#{"))
+      (vector-exp (rator rands) (primt-vect (append (list (evaluar-expresion rator ambiente)) (struct-lista rands ambiente)) "#{"))
       ;;Primitivas
       (primitiva-exp (prim rator rands)
                      (if (prim-aritmetica? prim)
                          ;"ES PRIMITIVA ARITMETICA"
                          (if (and (number? (evaluar-expresion rator ambiente))
-                              (number? (car (evaluar-rands rands ambiente))))
+                              (number? (car (struct-lista rands ambiente))))
                          (aplicar-primitiva prim
                                             (append
                                              (list (evaluar-expresion rator ambiente))
-                                             (evaluar-rands rands ambiente)))
+                                             ;(evaluar-rands rands ambiente)
+                                             (struct-lista rands ambiente)
+                                             ))
                          (eopl:error 'evaluar-expresion
                                  "Solo se operan numeros, listas y vectores"))
                          ;"NO ES PRIMITIVA ARITMETICA"
                          (if (prim-booleana? prim)
                              (if (and (number? (evaluar-expresion rator ambiente))
-                                      (number? (car (evaluar-rands rands ambiente))))
+                                      (number? (car (struct-lista rands ambiente))))
                                  (aplicar-primitiva prim
                                                     (append
                                                      (list (evaluar-expresion rator ambiente))
-                                                     (evaluar-rands rands ambiente)))
+                                                     ;(evaluar-rands rands ambiente)
+                                                     (struct-lista rands ambiente)
+                                                     ))
                                  (eopl:error 'evaluar-expresion
                                              "Solo se operan numeros, listas y vectores"))
                              ;"NO ES PRIMITIVA BOOLEANA"
                              (if (prim-list-vect? prim)
                                  ;"ES PRIMITIVA LISTA VECTOR"
-                                 (aplicar-primitiva prim
+                                  (aplicar-primitiva prim
                                                     (append
                                                      (list (evaluar-expresion rator ambiente))
-                                                     (evaluar-rands rands ambiente)))
+                                                     ;(evaluar-rands rands ambiente)
+                                                     (struct-lista rands ambiente)
+                                                     ))
                                  ;"NO ES PRIMITIVA LISTA VECTOR"
                                  (if (prim-vect? prim)
                                      ;"ES PRIMITIVA VECTOR"
                                      (aplicar-primitiva prim
                                                     (append
                                                      (list (evaluar-expresion rator ambiente))
-                                                     (evaluar-rands rands ambiente)))
+                                                     ;(evaluar-rands rands ambiente)
+                                                     (struct-lista rands ambiente)
+                                                     ))
                                      "NO ES PRIMITIVA VECTOR"
                                      )
                                  )
@@ -316,14 +321,8 @@
                          )
                    )
       ;; Crea una función y la asigna directamente a una variable
-      ; id: funcion
-      ; ids: (x y)
-      ; body: #(struct:variableAsignacion-exp x #(struct:primitiva-exp #(struct:sum-prim) #(struct:variable-exp x) (#(struct:variable-exp y))))
-      ; rands: (#(struct:variableAsignacion-exp y #(struct:primitiva-exp #(struct:sum-prim) #(struct:variable-exp y) (#(struct:entero-exp "3")))) #(struct:primitiva-exp #(struct:mul-prim) #(struct:variable-exp x) (#(struct:variable-exp y))))
-      (fun-exp (id ids body rands)
-               ;(evaluar-expresion body (ambiente-extendido ids '(0 0) ambiente))
-               ;(closure-func id ids body rands ambiente)
-                (begin (closure-func id ids body rands ambiente) "#void")
+     (fun-exp (id ids body rands)
+               (begin (closure-func id ids body rands ambiente) "#void")
                 )
       ;; Retorna un valor procedimiento, es necesario asignarlo a una variable
       (proc-exp (ids body rands)
@@ -341,8 +340,7 @@
       ;;Invoacion de funciones/procedmientos
       (app-exp (rator rands)
                rator
-               ;rands
-                   
+                                 
                ;(let ((proc (evaluar-expresion rator ambiente))
                ;      (args (evaluar-rands rands ambiente)))
                ;  ;(append (list proc) (list (car args)) (cdr args))
@@ -371,23 +369,20 @@
 ;******************************************************************************************
 
 
-
-
-(define make-vars
-  (lambda (ids rands)
-    (cond
-      ((null? ids)
-       
-       )
-      (else
-       (variableCreacion-exp (car ids) (car rands))
-       (make-vars (cdr ids) (cdr rands))
-       )
-      )
+;******************************************************************************************
+;;
+;; struct-lista: <lista-targets> <ambiente>
+;; Convierte una lista de estructura de targets en una lista con sus correspondientes valores de referencia
+;;
+(define struct-lista
+  (lambda (lista ambiente)
+    (if (null? lista)
+        empty
+        (append  (list (evaluar-expresion (car lista) ambiente)) (struct-lista (cdr lista) ambiente)))
     )
   )
-
-
+;;
+;******************************************************************************************
 
 
 ;******************************************************************************************
@@ -399,13 +394,16 @@
     (string? x)))
 ;;
 ;******************************************************************************************
-
-;true-value?: determina si un valor dado corresponde a un valor booleano falso o verdadero
+;;
+;; true-value?: determina si un valor dado corresponde a un valor booleano falso o verdadero
+;;
 (define true-value?
   (lambda (x)
     (not (eqv? x 'false))))
-
-;cond-value? determina si un valor dado corresponde a un valor booleano falso o verdadero
+;******************************************************************************************
+;;
+;; cond-value? determina si un valor dado corresponde a un valor booleano falso o verdadero
+;;
 (define cond-value?
   (lambda (conds resp defect ambiente)
     (if (null? conds)
@@ -417,27 +415,24 @@
         )
     )
   )
+;******************************************************************************************
 
-
+;******************************************************************************************
 ;;
-;; Funcion para imprimir lista
+;; Funciones para imprimir lista
 ;;
 (define primt-list
   (lambda (lista salida)
+    ;lista
     (if (null? lista)
         (string-append "}")
         (string-append salida (number->string (car lista)) (primt-list (cdr lista) " "))
         )
-        ;(if (null? salida)
-        ;    (string-append " " (number->string (car lista)) (primt-list (cdr lista) empty))
-        ;    (string-append salida (number->string (car lista)) (primt-list (cdr lista) empty))
-        ;    )
-        )
+    )
   )
+;******************************************************************************************
 
-
-
-
+;******************************************************************************************
 ;;
 ;; Funcion para imprimir vector
 ;;
@@ -450,11 +445,36 @@
             (string-append salida (number->string (car vector)) (primt-vect (cdr vector) empty))
             )
         )))
+;******************************************************************************************
 
+;******************************************************************************************
+;; Funcion para imprimir un vector con un elemento nuevo (primitiva agregar)
+;;
+(define primt-vect-agregar
+  (lambda (vector salida i)
+    (if (= (length vector) i)
+        (string-append " " (number->string (last vector)) "}")
+        (if (null? salida)
+            (string-append " " (car vector) (primt-vect-agregar (cdr vector) empty i ))
+            (string-append salida (car vector) (primt-vect-agregar (cdr vector) empty i)))
+        )
+    )
+  )
+;******************************************************************************************
 
-
-
-
+;******************************************************************************************
+;;
+;; Funcion para imprimir un vector despues de eliminar un elemento (primita delete)
+(define primt-vect-delete
+  (lambda (vector salida)
+    (if (null? vector)
+        (string-append "}")
+        (if (null? salida)
+            (string-append " " (car vector) (primt-vect-delete (cdr vector) empty))
+            (string-append salida (car vector) (primt-vect-delete (cdr vector) empty))
+            )
+        )))
+;******************************************************************************************
 
 ;******************************************************************************************
 ;;
@@ -473,8 +493,6 @@
   )
 ;;
 ;******************************************************************************************
-
-
 
 ;******************************************************************************************
 ;;
@@ -495,7 +513,6 @@
 ;;
 ;******************************************************************************************
 
-
 ;******************************************************************************************
 ;;
 ;; Funcion para validar si es una primitiva de listas y vectores
@@ -510,9 +527,6 @@
     )
   )
 ;******************************************************************************************
-
-
-
 
 ;******************************************************************************************
 ;;
@@ -529,9 +543,10 @@
   )
 ;******************************************************************************************
 
-
-
-
+;******************************************************************************************
+;;
+;; Funcion para consultar el elemento n-esimo del vector
+;;
 (define get-element
   (lambda (lista pos i)
     (cond
@@ -546,9 +561,12 @@
       )
     )
   )
+;******************************************************************************************
 
-
-
+;******************************************************************************************
+;;
+;; Funcion para eliminar el elemento n-esimo del vector
+;;
 (define delete-element
   (lambda (lista pos i listab)
     (cond
@@ -563,12 +581,11 @@
       )
     )
   )
-
-
+;******************************************************************************************
 
 ;******************************************************************************************
 ;;
-;; aplicar-primitiva <primitiva> <list-of-expression> -> numero
+;; Funcion para aplicar una primitiva
 ;;
 (define aplicar-primitiva
   (lambda (prim args)
@@ -610,13 +627,13 @@
                 )
       ;; Vector
       (add-vector-prim () (if (string-prefix? (car args) "#")
-                              (append (string-split (string-replace (string-replace (string-replace (car args) "{" "") "}" "") "#" "")) (list (cadr args)))
+                              (primt-vect-agregar (append (string-split (string-replace (string-replace (string-replace (car args) "{" "") "}" "") "#" "")) (list (cadr args))) "#{" 1)
                               (eopl:error 'evaluar-expresion
                                              "Primitiva solo para vectores")
                               )
                        )
       (del-vector-prim () (if (string-prefix? (car args) "#")
-                              (delete-element (string-split (string-replace (string-replace (string-replace (car args) "{" "") "}" "") "#" "")) (cadr args) 1 '())
+                              (primt-vect-delete (delete-element (string-split (string-replace (string-replace (string-replace (car args) "{" "") "}" "") "#" "")) (cadr args) 1 '())"#{")
                               (eopl:error 'evaluar-expresion
                                              "Primitiva solo para vectores")
                               )
@@ -624,14 +641,11 @@
       )
     )
   )
-;;
 ;******************************************************************************************
-
-
 
 ;******************************************************************************************
 ;;
-;; funciones auxiliares para aplicar evaluar-expresion a cada elemento de una 
+;; Funciones auxiliares para aplicar evaluar-expresion a cada elemento de una 
 ;; lista de operandos (expresiones)
 ;;
 (define evaluar-rands
@@ -640,33 +654,50 @@
 ;;
 (define evaluar-rand
   (lambda (rand env)
-    (evaluar-expresion rand env)))
+    (cases expresion rand
+      (variable-exp (id)
+               (indirect-target
+                (let ((ref (aplicar-ambiente-ref env id)))
+                  (cases target (primitive-deref ref)
+                    (direct-target (expval) ref)
+                    (indirect-target (ref1) ref1)))))
+      (else
+       (direct-target (evaluar-expresion rand env))))))
+;; -
+;(define evaluar-rand
+;  (lambda (rand env)
+;    (evaluar-expresion rand env)))
 ;;
 (define evaluar-crear-var
   (lambda (simbolos valores ambiente)
     (ambiente-extendido '(variable) '(body) ambiente) "#void"))
-;;
 ;******************************************************************************************
-
-
 
 ;******************************************************************************************
 ;;
 ;; Ambientes
 ;;
-;; definición del tipo de dato ambiente
+;; Definición del tipo de dato ambiente
 ;;
+;definición del tipo de dato ambiente
 (define-datatype ambiente ambiente?
   (ambiente-vacio-constructor)
-  (ambiente-extendido-constructor (simbolos (list-of symbol?))
-                                  (valores (list-of scheme-value?))
-                                  (ambiente ambiente?))
-  )
+  (ambiente-extendido-constructor
+   (simbolos (list-of symbol?))
+   (vector vector?)
+   (ambiente ambiente?)))
+;; -
+;(define-datatype ambiente ambiente?
+;  (ambiente-vacio-constructor)
+;  (ambiente-extendido-constructor (simbolos (list-of symbol?))
+;                                  (valores (list-of scheme-value?))
+;                                  (ambiente ambiente?))
+;  )
 ;;
 (define scheme-value? (lambda (v) #t))
 ;;
-;; ambiente-vacio:      -> enviroment
-;; función que crea un ambiente vacío
+;; Ambiente-vacio:      -> enviroment
+;; Función que crea un ambiente vacío
 ;;
 (define ambiente-vacio  
   (lambda ()
@@ -677,23 +708,13 @@
 ;;
 (define ambiente-extendido
   (lambda (simbolos valores ambiente)
-    (ambiente-extendido-constructor simbolos valores ambiente))) ;llamado al constructor de ambiente extendido
+    (ambiente-extendido-constructor simbolos (list->vector valores) ambiente))) ;llamado al constructor de ambiente extendido
 ;;
-;; función que busca un símbolo en un ambiente
+;; Función que busca un símbolo en un ambiente
 ;;
 (define aplicar-ambiente
-  (lambda (env simbolo)
-    (cases ambiente env
-      (ambiente-vacio-constructor ()
-                                  (eopl:error 'aplicar-ambiente "No binding for ~s" simbolo))
-      (ambiente-extendido-constructor (simbolos valores env)
-                                      (let ((pos (list-buscar-posicion simbolo simbolos)))
-                                        (if (number? pos)
-                                            (list-ref valores pos)
-                                            (aplicar-ambiente env simbolo))))
-      )
-    )
-  )
+  (lambda (env sym)
+    (deref (aplicar-ambiente-ref env sym))))
 ;;
 (define aplicar-ambiente-ref
   (lambda (env sym)
@@ -703,12 +724,35 @@
       (ambiente-extendido-constructor (syms vals env)
                            (let ((pos (rib-find-position sym syms)))
                              (if (number? pos)
-                                 (a-ref pos (list->vector vals))
+                                 (a-ref pos vals)
                                  (aplicar-ambiente-ref env sym)))))))
+;; -
+;(define aplicar-ambiente
+;  (lambda (env simbolo)
+;    (cases ambiente env
+;      (ambiente-vacio-constructor ()
+;                                  (eopl:error 'aplicar-ambiente "Error no existe ~s" simbolo))
+;      (ambiente-extendido-constructor (simbolos valores env)
+;                                      (let ((pos (list-buscar-posicion simbolo simbolos)))
+;                                        (if (number? pos)
+;                                            (list-ref valores pos)
+;                                            (aplicar-ambiente env simbolo))))
+;      )
+;    )
+;  )
+;;
+;(define aplicar-ambiente-ref
+;  (lambda (env sym)
+;    (cases ambiente env
+;      (ambiente-vacio-constructor ()
+;                        (eopl:error 'aplicar-ambiente-ref "No binding for ~s" sym))
+;      (ambiente-extendido-constructor (syms vals env)
+;                           (let ((pos (rib-find-position sym syms)))
+;                             (if (number? pos)
+;                                 (a-ref pos (list->vector vals))
+;                                 (aplicar-ambiente-ref env sym)))))))
 ;;
 ;******************************************************************************************
-
-
 
 ;******************************************************************************************
 ;;
@@ -737,15 +781,53 @@
 ;;
 ;******************************************************************************************
 
-
-
 ;******************************************************************************************
 ;;
 ;; Referencias
 ;;
+;Blancos y Referencias
+
+(define expval?
+  (lambda (x)
+    (or (number? x) (procval? x))))
+;;
+(define ref-to-direct-target?
+  (lambda (x)
+    (and (reference? x)
+         (cases reference x
+           (a-ref (pos vec)
+                  (cases target (vector-ref vec pos)
+                    (direct-target (v) #t)
+                    (indirect-target (v) #f)))))))
+;;
+(define deref
+  (lambda (ref)
+    (cases target (primitive-deref ref)
+      (direct-target (expval) expval)
+      (indirect-target (ref1)
+                       (cases target (primitive-deref ref1)
+                         (direct-target (expval) expval)
+                         (indirect-target (p)
+                                          (eopl:error 'deref
+                                                      "Illegal reference: ~s" ref1)))))))
+;;
+(define primitive-deref
+  (lambda (ref)
+    (cases reference ref
+      (a-ref (pos vec)
+             (vector-ref vec pos)))))
+;;
 (define setref!
-  (lambda (ref val)
-    (primitive-setref! ref val)))
+  (lambda (ref expval)
+    (let
+        ((ref (cases target (primitive-deref ref)
+                (direct-target (expval1) ref)
+                (indirect-target (ref1) ref1))))
+      (primitive-setref! ref (direct-target expval)))))
+;; -
+;(define setref!
+;  (lambda (ref val)
+;    (primitive-setref! ref val)))
 ;;
 (define primitive-setref!
   (lambda (ref val)
@@ -753,13 +835,7 @@
       (a-ref (pos vec)
              (vector-set! vec pos val)))))
 ;;
-(define-datatype reference reference?
-  (a-ref (position integer?)
-         (vec vector?)))
-;;
 ;******************************************************************************************
-
-
 
 ;******************************************************************************************
 ;;
@@ -780,6 +856,8 @@
                (evaluar-expresion body (ambiente-extendido ids args env))
                (evaluar-expresion rands (ambiente-extendido ids args env))))))
 ;;
+;******************************************************************************************
+;;
 ;; Funciones
 ;;
 (define-datatype funcval funcval?
@@ -798,10 +876,10 @@
                     (let ([id (evaluar-expresion body (ambiente-extendido ids args env))]) id)
                     (let ([id (evaluar-expresion rands (ambiente-extendido ids args env))]) id)
                     ))))
-;;
 ;******************************************************************************************
 
-
+;; -- Interpretador
+(interpretador)
 
 ;******************************************************************************************
 ;;
@@ -834,8 +912,8 @@
 (scan&parse "agregar(#{1 2 3 4 5}, 10)")
 (scan&parse "delete(#{1 2 3 4 5}, 2)")
 ;;Bug en cond no trabaja con textos
-(scan&parse "cond [>(x,y) 1] [<(x,y) 2] else 2")
-(scan&parse "if <(x,y) ? 'hola' : 'no'")
+(scan&parse "cond [>(x,0) 1] [<(x,3) 2] else 2")
+(scan&parse "if <(x,4) ? 'hola' : 'no'")
 (scan&parse "local ( ( a = 3 b = 3) (+(a,b,3)) )")
 (scan&parse "local ( ( a = 3 b = 3) ('prueba') )")
 ;;

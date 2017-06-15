@@ -77,8 +77,6 @@
 ;;
 ;******************************************************************************************
 
-
-
 ;******************************************************************************************
 ;;
 ;; Especificación Sintáctica (gramática)
@@ -146,8 +144,6 @@
 ;;
 ;******************************************************************************************
 
-
-
 ;******************************************************************************************
 ;;
 ;; Definir datatypes (Construidos automáticamente)
@@ -164,8 +160,6 @@
 ;;
 ;******************************************************************************************
 
-
-
 ;******************************************************************************************
 ;;
 ;; Escaner El Analizador Léxico (Scanner)
@@ -174,8 +168,6 @@
 ;;
 ;******************************************************************************************
 
-
-
 ;******************************************************************************************
 ;;
 ;; Parse El FrontEnd (Análisis léxico (scanner) y sintáctico (parser) integrados)
@@ -183,10 +175,6 @@
 (define scan&parse (sllgen:make-string-parser especificacion-lexica especificacion-gramatical))
 ;;
 ;******************************************************************************************
-
-
-
-
 
 
 ;******************************************************************************************
@@ -207,7 +195,6 @@
 ;******************************************************************************************
 
 
-
 ;******************************************************************************************
 ;;
 ;; El Interprete
@@ -224,7 +211,6 @@
 ;******************************************************************************************
 
 
-
 ;******************************************************************************************
 ;;
 ;; Ambiente inicial (es vacio)
@@ -239,8 +225,6 @@
   )
 ;;
 ;******************************************************************************************
-
-
 
 ;******************************************************************************************
 ;;
@@ -298,7 +282,7 @@
                              ;"NO ES PRIMITIVA BOOLEANA"
                              (if (prim-list-vect? prim)
                                  ;"ES PRIMITIVA LISTA VECTOR"
-                                 (aplicar-primitiva prim
+                                  (aplicar-primitiva prim
                                                     (append
                                                      (list (evaluar-expresion rator ambiente))
                                                      (evaluar-rands rands ambiente)))
@@ -316,14 +300,8 @@
                          )
                    )
       ;; Crea una función y la asigna directamente a una variable
-      ; id: funcion
-      ; ids: (x y)
-      ; body: #(struct:variableAsignacion-exp x #(struct:primitiva-exp #(struct:sum-prim) #(struct:variable-exp x) (#(struct:variable-exp y))))
-      ; rands: (#(struct:variableAsignacion-exp y #(struct:primitiva-exp #(struct:sum-prim) #(struct:variable-exp y) (#(struct:entero-exp "3")))) #(struct:primitiva-exp #(struct:mul-prim) #(struct:variable-exp x) (#(struct:variable-exp y))))
-      (fun-exp (id ids body rands)
-               ;(evaluar-expresion body (ambiente-extendido ids '(0 0) ambiente))
-               ;(closure-func id ids body rands ambiente)
-                (begin (closure-func id ids body rands ambiente) "#void")
+     (fun-exp (id ids body rands)
+               (begin (closure-func id ids body rands ambiente) "#void")
                 )
       ;; Retorna un valor procedimiento, es necesario asignarlo a una variable
       (proc-exp (ids body rands)
@@ -341,8 +319,7 @@
       ;;Invoacion de funciones/procedmientos
       (app-exp (rator rands)
                rator
-               ;rands
-                   
+                                 
                ;(let ((proc (evaluar-expresion rator ambiente))
                ;      (args (evaluar-rands rands ambiente)))
                ;  ;(append (list proc) (list (car args)) (cdr args))
@@ -370,26 +347,6 @@
 ;;
 ;******************************************************************************************
 
-
-
-
-(define make-vars
-  (lambda (ids rands)
-    (cond
-      ((null? ids)
-       
-       )
-      (else
-       (variableCreacion-exp (car ids) (car rands))
-       (make-vars (cdr ids) (cdr rands))
-       )
-      )
-    )
-  )
-
-
-
-
 ;******************************************************************************************
 ;;
 ;; texto-value?: determina si un valor dado corresponde a un valor string
@@ -399,13 +356,16 @@
     (string? x)))
 ;;
 ;******************************************************************************************
-
-;true-value?: determina si un valor dado corresponde a un valor booleano falso o verdadero
+;;
+;; true-value?: determina si un valor dado corresponde a un valor booleano falso o verdadero
+;;
 (define true-value?
   (lambda (x)
     (not (eqv? x 'false))))
-
-;cond-value? determina si un valor dado corresponde a un valor booleano falso o verdadero
+;******************************************************************************************
+;;
+;; cond-value? determina si un valor dado corresponde a un valor booleano falso o verdadero
+;;
 (define cond-value?
   (lambda (conds resp defect ambiente)
     (if (null? conds)
@@ -417,10 +377,11 @@
         )
     )
   )
+;******************************************************************************************
 
-
+;******************************************************************************************
 ;;
-;; Funcion para imprimir lista
+;; Funciones para imprimir lista
 ;;
 (define primt-list
   (lambda (lista salida)
@@ -428,16 +389,11 @@
         (string-append "}")
         (string-append salida (number->string (car lista)) (primt-list (cdr lista) " "))
         )
-        ;(if (null? salida)
-        ;    (string-append " " (number->string (car lista)) (primt-list (cdr lista) empty))
-        ;    (string-append salida (number->string (car lista)) (primt-list (cdr lista) empty))
-        ;    )
-        )
+    )
   )
+;******************************************************************************************
 
-
-
-
+;******************************************************************************************
 ;;
 ;; Funcion para imprimir vector
 ;;
@@ -450,11 +406,36 @@
             (string-append salida (number->string (car vector)) (primt-vect (cdr vector) empty))
             )
         )))
+;******************************************************************************************
 
+;******************************************************************************************
+;; Funcion para imprimir un vector con un elemento nuevo (primitiva agregar)
+;;
+(define primt-vect-agregar
+  (lambda (vector salida i)
+    (if (= (length vector) i)
+        (string-append " " (number->string (last vector)) "}")
+        (if (null? salida)
+            (string-append " " (car vector) (primt-vect-agregar (cdr vector) empty i ))
+            (string-append salida (car vector) (primt-vect-agregar (cdr vector) empty i)))
+        )
+    )
+  )
+;******************************************************************************************
 
-
-
-
+;******************************************************************************************
+;;
+;; Funcion para imprimir un vector despues de eliminar un elemento (primita delete)
+(define primt-vect-delete
+  (lambda (vector salida)
+    (if (null? vector)
+        (string-append "}")
+        (if (null? salida)
+            (string-append " " (car vector) (primt-vect-delete (cdr vector) empty))
+            (string-append salida (car vector) (primt-vect-delete (cdr vector) empty))
+            )
+        )))
+;******************************************************************************************
 
 ;******************************************************************************************
 ;;
@@ -473,8 +454,6 @@
   )
 ;;
 ;******************************************************************************************
-
-
 
 ;******************************************************************************************
 ;;
@@ -495,7 +474,6 @@
 ;;
 ;******************************************************************************************
 
-
 ;******************************************************************************************
 ;;
 ;; Funcion para validar si es una primitiva de listas y vectores
@@ -510,9 +488,6 @@
     )
   )
 ;******************************************************************************************
-
-
-
 
 ;******************************************************************************************
 ;;
@@ -529,9 +504,10 @@
   )
 ;******************************************************************************************
 
-
-
-
+;******************************************************************************************
+;;
+;; Funcion para consultar el elemento n-esimo del vector
+;;
 (define get-element
   (lambda (lista pos i)
     (cond
@@ -546,9 +522,12 @@
       )
     )
   )
+;******************************************************************************************
 
-
-
+;******************************************************************************************
+;;
+;; Funcion para eliminar el elemento n-esimo del vector
+;;
 (define delete-element
   (lambda (lista pos i listab)
     (cond
@@ -563,12 +542,11 @@
       )
     )
   )
-
-
+;******************************************************************************************
 
 ;******************************************************************************************
 ;;
-;; aplicar-primitiva <primitiva> <list-of-expression> -> numero
+;; Funcion para aplicar una primitiva
 ;;
 (define aplicar-primitiva
   (lambda (prim args)
@@ -610,13 +588,13 @@
                 )
       ;; Vector
       (add-vector-prim () (if (string-prefix? (car args) "#")
-                              (append (string-split (string-replace (string-replace (string-replace (car args) "{" "") "}" "") "#" "")) (list (cadr args)))
+                              (primt-vect-agregar (append (string-split (string-replace (string-replace (string-replace (car args) "{" "") "}" "") "#" "")) (list (cadr args))) "#{" 1)
                               (eopl:error 'evaluar-expresion
                                              "Primitiva solo para vectores")
                               )
                        )
       (del-vector-prim () (if (string-prefix? (car args) "#")
-                              (delete-element (string-split (string-replace (string-replace (string-replace (car args) "{" "") "}" "") "#" "")) (cadr args) 1 '())
+                              (primt-vect-delete (delete-element (string-split (string-replace (string-replace (string-replace (car args) "{" "") "}" "") "#" "")) (cadr args) 1 '())"#{")
                               (eopl:error 'evaluar-expresion
                                              "Primitiva solo para vectores")
                               )
@@ -624,14 +602,11 @@
       )
     )
   )
-;;
 ;******************************************************************************************
-
-
 
 ;******************************************************************************************
 ;;
-;; funciones auxiliares para aplicar evaluar-expresion a cada elemento de una 
+;; Funciones auxiliares para aplicar evaluar-expresion a cada elemento de una 
 ;; lista de operandos (expresiones)
 ;;
 (define evaluar-rands
@@ -645,16 +620,13 @@
 (define evaluar-crear-var
   (lambda (simbolos valores ambiente)
     (ambiente-extendido '(variable) '(body) ambiente) "#void"))
-;;
 ;******************************************************************************************
-
-
 
 ;******************************************************************************************
 ;;
 ;; Ambientes
 ;;
-;; definición del tipo de dato ambiente
+;; Definición del tipo de dato ambiente
 ;;
 (define-datatype ambiente ambiente?
   (ambiente-vacio-constructor)
@@ -665,8 +637,8 @@
 ;;
 (define scheme-value? (lambda (v) #t))
 ;;
-;; ambiente-vacio:      -> enviroment
-;; función que crea un ambiente vacío
+;; Ambiente-vacio:      -> enviroment
+;; Función que crea un ambiente vacío
 ;;
 (define ambiente-vacio  
   (lambda ()
@@ -679,13 +651,13 @@
   (lambda (simbolos valores ambiente)
     (ambiente-extendido-constructor simbolos valores ambiente))) ;llamado al constructor de ambiente extendido
 ;;
-;; función que busca un símbolo en un ambiente
+;; Función que busca un símbolo en un ambiente
 ;;
 (define aplicar-ambiente
   (lambda (env simbolo)
     (cases ambiente env
       (ambiente-vacio-constructor ()
-                                  (eopl:error 'aplicar-ambiente "No binding for ~s" simbolo))
+                                  (eopl:error 'aplicar-ambiente "Error no existe ~s" simbolo))
       (ambiente-extendido-constructor (simbolos valores env)
                                       (let ((pos (list-buscar-posicion simbolo simbolos)))
                                         (if (number? pos)
@@ -707,8 +679,6 @@
                                  (aplicar-ambiente-ref env sym)))))))
 ;;
 ;******************************************************************************************
-
-
 
 ;******************************************************************************************
 ;;
@@ -737,8 +707,6 @@
 ;;
 ;******************************************************************************************
 
-
-
 ;******************************************************************************************
 ;;
 ;; Referencias
@@ -759,8 +727,6 @@
 ;;
 ;******************************************************************************************
 
-
-
 ;******************************************************************************************
 ;;
 ;; Procedimientos
@@ -780,6 +746,8 @@
                (evaluar-expresion body (ambiente-extendido ids args env))
                (evaluar-expresion rands (ambiente-extendido ids args env))))))
 ;;
+;******************************************************************************************
+;;
 ;; Funciones
 ;;
 (define-datatype funcval funcval?
@@ -798,10 +766,7 @@
                     (let ([id (evaluar-expresion body (ambiente-extendido ids args env))]) id)
                     (let ([id (evaluar-expresion rands (ambiente-extendido ids args env))]) id)
                     ))))
-;;
 ;******************************************************************************************
-
-
 
 ;******************************************************************************************
 ;;

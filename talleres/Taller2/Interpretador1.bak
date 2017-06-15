@@ -1,6 +1,5 @@
 #lang eopl
-(require racket/string)
-(require racket/list)
+
 
 ;;
 ;; Jhonny Melgarejo 1310251
@@ -266,13 +265,9 @@
                                 (setref!
                                  (aplicar-ambiente-ref ambiente variable)
                                  (evaluar-expresion rhsexp ambiente))
-                                "#void"
-                                )
-                              )
-      ;; Listas
-      (lista-exp (rator rands) (primt-list (append (list (evaluar-expresion rator ambiente)) (evaluar-rands rands ambiente)) "{"))
-      ;;Vectores
-      (vector-exp (rator rands) (primt-vect (append (list (evaluar-expresion rator ambiente)) (evaluar-rands rands ambiente)) "#{"))
+                                "#void"))
+      ;;Funciones (el primer argumento es el nombre de la función, los siguientes los argumentos, se retorna el último valor de la expresion
+      (fun-exp (variable body) )
       ;;Primitivas
       (primitiva-exp (prim rator rands)
                      (if (prim-aritmetica? prim)
@@ -296,96 +291,17 @@
                                  (eopl:error 'evaluar-expresion
                                              "Solo se operan numeros, listas y vectores"))
                              ;"NO ES PRIMITIVA BOOLEANA"
-                             (if (prim-list-vect? prim)
-                                 ;"ES PRIMITIVA LISTA VECTOR"
-                                 (aplicar-primitiva prim
-                                                    (append
-                                                     (list (evaluar-expresion rator ambiente))
-                                                     (evaluar-rands rands ambiente)))
-                                 ;"NO ES PRIMITIVA LISTA VECTOR"
-                                 (if (prim-vect? prim)
-                                     ;"ES PRIMITIVA VECTOR"
-                                     (aplicar-primitiva prim
-                                                    (append
-                                                     (list (evaluar-expresion rator ambiente))
-                                                     (evaluar-rands rands ambiente)))
-                                     "NO ES PRIMITIVA VECTOR"
-                                     )
-                                 )
+                             (eopl:error 'evaluar-expresion
+                                             "No es una primitiva booleana")
                              )
                          )
                    )
-      ;; Crea una función y la asigna directamente a una variable
-      ; id: funcion
-      ; ids: (x y)
-      ; body: #(struct:variableAsignacion-exp x #(struct:primitiva-exp #(struct:sum-prim) #(struct:variable-exp x) (#(struct:variable-exp y))))
-      ; rands: (#(struct:variableAsignacion-exp y #(struct:primitiva-exp #(struct:sum-prim) #(struct:variable-exp y) (#(struct:entero-exp "3")))) #(struct:primitiva-exp #(struct:mul-prim) #(struct:variable-exp x) (#(struct:variable-exp y))))
-      (fun-exp (id ids body rands)
-               ;(evaluar-expresion body (ambiente-extendido ids '(0 0) ambiente))
-               ;(closure-func id ids body rands ambiente)
-                (begin (closure-func id ids body rands ambiente) "#void")
-                )
-      ;; Retorna un valor procedimiento, es necesario asignarlo a una variable
-      (proc-exp (ids body rands)
-                (begin (closure-proc ids body rands ambiente) "#void")
-                )
-      ;; Condicionales
-      (if-exp (test-exp true-exp false-exp)
-              (if (true-value? (evaluar-expresion test-exp ambiente))
-                  (evaluar-expresion true-exp ambiente)
-                  (evaluar-expresion false-exp ambiente))
-              )
-      (cond-exp (rands1 rands2 rator)
-                (cond-value? rands1 rands2 rator ambiente)
-                )
-      ;;Invoacion de funciones/procedmientos
-      (app-exp (rator rands)
-               rator
-               ;rands
-                   
-               ;(let ((proc (evaluar-expresion rator ambiente))
-               ;      (args (evaluar-rands rands ambiente)))
-               ;  ;(append (list proc) (list (car args)) (cdr args))
-               ;  (if (procval? proc)
-               ;      (apply-procedure proc args)
-               ;      (if (funcval? proc)
-               ;          "COSA"
-               ;          ;(apply-function proc args)
-               ;          (eopl:error 'evaluar-expresion
-               ;                  "Attempt to apply non-procedure non-function ~s" proc))
-               ;      )
-               ;  )
-               
-               )
-      ;; Locales (crea las variables y retorna un valor)
-      (local-exp (ids rands body rator)
-                 (if (null? rator)
-                     (evaluar-expresion body (ambiente-extendido ids (evaluar-rands rands ambiente) ambiente))
-                     (evaluar-expresion (last rator) (ambiente-extendido ids (evaluar-rands rands ambiente) ambiente))
-                     )
-                 )
+      (else ("Cosa Exp"))
       )
     )
   )
 ;;
 ;******************************************************************************************
-
-
-
-
-(define make-vars
-  (lambda (ids rands)
-    (cond
-      ((null? ids)
-       
-       )
-      (else
-       (variableCreacion-exp (car ids) (car rands))
-       (make-vars (cdr ids) (cdr rands))
-       )
-      )
-    )
-  )
 
 
 
@@ -400,60 +316,10 @@
 ;;
 ;******************************************************************************************
 
-;true-value?: determina si un valor dado corresponde a un valor booleano falso o verdadero
-(define true-value?
-  (lambda (x)
-    (not (eqv? x 'false))))
-
-;cond-value? determina si un valor dado corresponde a un valor booleano falso o verdadero
-(define cond-value?
-  (lambda (conds resp defect ambiente)
-    (if (null? conds)
-        (evaluar-expresion defect ambiente)
-        (if (true-value? (evaluar-expresion (car conds) ambiente))
-            (evaluar-expresion (car resp) ambiente)
-            (cond-value? (cdr conds) (cdr resp) defect ambiente)
-            )
-        )
-    )
-  )
-
 
 ;;
 ;; Funcion para imprimir lista
 ;;
-(define primt-list
-  (lambda (lista salida)
-    (if (null? lista)
-        (string-append "}")
-        (string-append salida (number->string (car lista)) (primt-list (cdr lista) " "))
-        )
-        ;(if (null? salida)
-        ;    (string-append " " (number->string (car lista)) (primt-list (cdr lista) empty))
-        ;    (string-append salida (number->string (car lista)) (primt-list (cdr lista) empty))
-        ;    )
-        )
-  )
-
-
-
-
-;;
-;; Funcion para imprimir vector
-;;
-(define primt-vect
-  (lambda (vector salida)
-    (if (null? vector)
-        (string-append "}")
-        (if (null? salida)
-            (string-append " " (number->string (car vector)) (primt-vect (cdr vector) empty))
-            (string-append salida (number->string (car vector)) (primt-vect (cdr vector) empty))
-            )
-        )))
-
-
-
-
 
 
 ;******************************************************************************************
@@ -496,75 +362,6 @@
 ;******************************************************************************************
 
 
-;******************************************************************************************
-;;
-;; Funcion para validar si es una primitiva de listas y vectores
-;;
-(define prim-list-vect?
-  (lambda (prim)
-    (cases primitive prim
-      (size-prim () #t)
-      (nth-prim () #t)
-      (else #f)
-      )
-    )
-  )
-;******************************************************************************************
-
-
-
-
-;******************************************************************************************
-;;
-;; Funcion para validar si es una primitiva de vector
-;;
-(define prim-vect?
-  (lambda (prim)
-    (cases primitive prim
-      (add-vector-prim () #t)
-      (del-vector-prim () #t)
-      (else #f)
-      )
-    )
-  )
-;******************************************************************************************
-
-
-
-
-(define get-element
-  (lambda (lista pos i)
-    (cond
-      ((null? lista)
-       (eopl:error 'get-element
-                   "No existen elementos")
-       )
-      ((= pos i) (car lista))
-      (else
-       (get-element (cdr lista) pos (+ i 1))
-       )
-      )
-    )
-  )
-
-
-
-(define delete-element
-  (lambda (lista pos i listab)
-    (cond
-      ((null? lista)
-       (eopl:error 'delete-element
-                   "No existen elementos")
-       )
-      ((= pos i) (append listab (cdr lista)))
-      (else
-       (delete-element (cdr lista) pos (+ i 1) (append listab (list (car lista))))
-       )
-      )
-    )
-  )
-
-
 
 ;******************************************************************************************
 ;;
@@ -580,8 +377,7 @@
                 )
       (sub-prim () (if (null? args)
                        0
-                       (- (car args) (aplicar-primitiva prim (cdr args)))
-                       )
+                       (- (car args) (aplicar-primitiva prim (cdr args))))
                 )
       (mul-prim () (if (null? args)
                        1
@@ -591,36 +387,12 @@
                        1
                        (/ (car args) (aplicar-primitiva prim (cdr args))))
                 )
-      ;; Comparación
       (menor-prim () (if (< (car args) (cadr args)) 'true 'false))
       (menig-prim () (if (<= (car args) (cadr args)) 'true 'false))
       (mayor-prim () (if (> (car args) (cadr args)) 'true 'false))
       (mayig-prim () (if (>= (car args) (cadr args)) 'true 'false))
       (igual-prim () (if (= (car args) (cadr args)) 'true 'false))
-      ;; Listas y vectores
-      (size-prim () (if (string-prefix? (car args) "{")
-                        (length (string-split (string-replace (string-replace (car args) "{" "") "}" "")))
-                        (length (string-split (string-replace (string-replace (string-replace (car args) "{" "") "}" "") "#" "")))
-                        )
-                 )
-      (nth-prim () (if (string-prefix? (car args) "{")
-                       (get-element (string-split (string-replace (string-replace (car args) "{" "") "}" "")) (cadr args) 1)
-                       (get-element (string-split (string-replace (string-replace (string-replace (car args) "{" "") "}" "") "#" "")) (cadr args) 1)
-                       )
-                )
-      ;; Vector
-      (add-vector-prim () (if (string-prefix? (car args) "#")
-                              (append (string-split (string-replace (string-replace (string-replace (car args) "{" "") "}" "") "#" "")) (list (cadr args)))
-                              (eopl:error 'evaluar-expresion
-                                             "Primitiva solo para vectores")
-                              )
-                       )
-      (del-vector-prim () (if (string-prefix? (car args) "#")
-                              (delete-element (string-split (string-replace (string-replace (string-replace (car args) "{" "") "}" "") "#" "")) (cadr args) 1 '())
-                              (eopl:error 'evaluar-expresion
-                                             "Primitiva solo para vectores")
-                              )
-                       )
+      (else ("Cosa Prim"))
       )
     )
   )
@@ -763,41 +535,9 @@
 
 ;******************************************************************************************
 ;;
-;; Procedimientos
+;; ;
 ;;
-(define-datatype procval procval?
-  (closure-proc
-   (ids (list-of symbol?))
-   (body expresion?)
-   (rands (list-of expresion?))
-   (env ambiente?)))
 
-;apply-procedure: evalua el cuerpo de un procedimientos en el ambiente extendido correspondiente
-(define apply-procedure
-  (lambda (proc args)
-    (cases procval proc
-      (closure-proc (ids body rands env)
-               (evaluar-expresion body (ambiente-extendido ids args env))
-               (evaluar-expresion rands (ambiente-extendido ids args env))))))
-;;
-;; Funciones
-;;
-(define-datatype funcval funcval?
-  (closure-func
-   (id symbol?)
-   (ids (list-of symbol?))
-   (body expresion?)
-   (rands (list-of expresion?))
-   (env ambiente?)))
-
-;apply-function evalua el cuerpo de una funcion en el ambiente extendido correspondiente
-(define apply-function
-  (lambda (func args)
-    (cases funcval func
-      (closure-func (id1 ids body rands env)
-                    (let ([id (evaluar-expresion body (ambiente-extendido ids args env))]) id)
-                    (let ([id (evaluar-expresion rands (ambiente-extendido ids args env))]) id)
-                    ))))
 ;;
 ;******************************************************************************************
 
